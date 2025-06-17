@@ -1,0 +1,17 @@
+# Ignore all files and folders in the ./data/ckpts directory
+data/ckpts/*
+
+# Ignore all files and folders in the ./data/log_output directory
+data/log_output/*
+
+# Ignore all __pycache__ directories recursively
+**/__pycache__/
+
+pretrained/convirt-vit/*
+pretrained/medclip-vit/*
+pretrained/medclip/*
+
+
+*.pdf
+*.pkl
+*.json
