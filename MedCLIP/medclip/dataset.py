@@ -489,8 +489,10 @@ class SuperviseImageDataset(Dataset):
         row = self.df.iloc[index]
         img = Image.open(row.imgpath)
         img = self._pad_img(img)
-        img = self.transform(img).unsqueeze(1)
-        label = pd.DataFrame(row[self.class_names]).transpose()
+        #img = self.transform(img).unsqueeze(1)
+        img = self.transform(img)
+        #label = pd.DataFrame(row[self.class_names]).transpose()
+        label = torch.tensor([row[self.class_names[0]]], dtype=torch.float) #sandra
         return img, label
 
     def _pad_img(self, img, min_size=224, fill_color=0):
@@ -521,11 +523,13 @@ class SuperviseImageCollator:
             inputs['labels'].append(data[1])
 
         # Concatenate pixel values
-        inputs['pixel_values'] = torch.cat(inputs['pixel_values'], dim=0)
+        #inputs['pixel_values'] = torch.cat(inputs['pixel_values'], dim=0)
+        inputs['pixel_values'] = torch.stack(inputs['pixel_values']) #sandra
 
         # Process labels based on mode
         if self.mode == 'binary':
-            inputs['labels'] = torch.stack(inputs['labels']).squeeze()  # Ensure it's 1D for binary labels
+            #inputs['labels'] = torch.stack(inputs['labels']).squeeze()  # Ensure it's 1D for binary labels
+            inputs['labels'] = torch.stack(inputs['labels']).squeeze(1) #sandra
         else:
             inputs['labels'] = torch.stack(inputs['labels'])  # Multiclass/multilabel will remain 2D
 

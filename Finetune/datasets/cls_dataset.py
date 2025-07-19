@@ -29,12 +29,9 @@ class RSNAImageClsDataset(Dataset):
 
     def __getitem__(self, index):
         row = self.df.iloc[index]
-        # get image
         img_path = row["path"]
         x = read_from_dicom(img_path, self.imsize, self.transform)
-        y = float(row["label"])
-        y = torch.tensor([y])
-
+        y = torch.tensor([float(row["label"])], dtype=torch.float)
         return x, y, img_path
     
 class ChexPertImageClsDataset(Dataset):

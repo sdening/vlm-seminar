@@ -8,8 +8,8 @@ import numpy as np  # NumPy for numerical operations
 import cv2  # OpenCV for image processing
 from collections import OrderedDict
 import sys
-sys.path.append('/u/home/galc/VLP-Seminar/')
-sys.path.append('/u/home/galc/VLP-Seminar/Finetune')
+sys.path.append('/Users/sandradening/Desktop/SU/Coding/vlm-seminar/')
+sys.path.append('/Users/sandradening/Desktop/SU/Coding/vlm-seminar/Finetune')
 from train_cls import load_config
 from methods.cls_model import FinetuneClassifier
 

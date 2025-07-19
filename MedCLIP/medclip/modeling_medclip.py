@@ -376,9 +376,10 @@ class SuperviseClassifier(nn.Module):
         outputs['logits'] = logits
 
         if labels is not None and return_loss:
+            labels = labels.float()
             if len(labels.shape) == 1:
-                labels = labels.view(-1, 1) 
-            labels = labels.float()  # Reshape to [32, 1] to match logits
+                labels = labels.view(-1, 1)
+            #labels = labels.float()  # Reshape to [32, 1] to match logits
             #print(f"Logits: {logits.detach().cpu().numpy()}")  # Print logits
             #print(f"Labels: {labels.detach().cpu().numpy()}")  # Print labels
             loss = self.loss_fn(logits, labels)

@@ -17,7 +17,10 @@ class DataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         if self.transforms:
-            transform = self.transforms(True, self.crop_size)
+            #if callable(self.transforms):
+            #    transform = self.transforms(True, self.crop_size)
+            #else:
+            transform = self.transforms
         else:
             transform = None
         
@@ -36,7 +39,10 @@ class DataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         if self.transforms:
-            transform = self.transforms(False, self.crop_size)
+            #if callable(self.transforms):
+            #    transform = self.transforms(False, self.crop_size)
+            #else:
+            transform = self.transforms
         else:
             transform = None
         dataset = self.dataset(config=self.config,

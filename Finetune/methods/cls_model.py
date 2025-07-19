@@ -54,7 +54,7 @@ class FinetuneClassifier(LightningModule):
         self.img_encoder_q = ImageEncoder(model_name=config["cls"]["backbone"], output_dim=config["cls"]['embed_dim'])
         
         for param in self.img_encoder_q.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         self.classification_head = ClassificationHead(
             n_input=self.in_features, n_classes=self.num_classes, p=self.dropout, n_hidden=self.hidden_dim

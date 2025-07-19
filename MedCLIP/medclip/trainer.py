@@ -101,7 +101,7 @@ class Trainer:
 
         train_loss_dict = defaultdict(list)
         for epoch in trange(epochs, desc="Epoch", disable=not show_progress_bar):
-            #print(f"Epoch {epoch + 1}, Classifier bias: {loss_model.model.fc.bias}")
+            model.train()  # ✅ Set model to training mode
 
             epoch_train_losses = []
             epoch_train_correct = 0
@@ -129,15 +129,29 @@ class Trainer:
                         print("Skipping empty batch")
                         continue
 
-                    for key in data:
-                        data[key] = data[key].to(device)
+                    # Send data to CPU (or GPU if you use one)
+                    if isinstance(data, dict):
+                        for key, value in data.items():
+                            if isinstance(value, torch.Tensor):
+                                data[key] = value.to(device)
+                    else:
+                        print(f"[WARNING] Unexpected data type: {type(data)}")
+                        continue
 
-                    # Forward pass and loss computation
-                    outputs = loss_model(pixel_values=data['pixel_values'], labels=data['labels'])
+                    # === Forward pass ===
+                    pixel_values = data['pixel_values'].to(device)
+                    labels = data['labels'].to(device)
+
+                    outputs = model(pixel_values=pixel_values, labels=labels, return_loss=True)
                     loss_value = loss_weight * outputs['loss_value'] / self.accumulation_steps
+
                     loss_value.backward()
 
-                    # Gradient clipping and optimizer step
+                    # Optional: Debug gradients
+                    #for name, param in model.named_parameters():
+                        #if param.requires_grad and param.grad is not None:
+                            #print(f"[DEBUG] {name}: grad norm = {param.grad.norm().item():.6f}")
+
                     torch.nn.utils.clip_grad_norm_(loss_model.parameters(), max_grad_norm)
                     optimizer.step()
                     optimizer.zero_grad()
@@ -150,54 +164,43 @@ class Trainer:
                     epoch_train_correct += (predictions == data['labels']).sum().item()
                     epoch_train_total += data['labels'].numel()
 
-
-                    #print(f"Logits: {outputs['logits'][:5]}")
-                    #print(f"Predictions: {predictions[:5]}")
-                    #print(f"Labels: {data['labels'][:5]}")
-
                 scheduler.step()
                 global_step += 1
 
-                # Evaluate at specified steps
                 if evaluation_steps > 0 and global_step % evaluation_steps == 0 and self.evaluator is not None:
+                    model.eval()  # ✅ Eval mode
                     scores = self.evaluator.evaluate()
                     print(f"\n######### Eval {global_step} #########")
                     print(f"TP: {scores['tp']}, TN: {scores['tn']}, FP: {scores['fp']}, FN: {scores['fn']}")
                     print(f"Accuracy: {scores['accuracy']:.4f}, Recall: {scores['recall']:.4f}")
+                    model.train()  # ✅ Back to train mode
 
-            # Log training metrics
             epoch_train_loss = np.mean(epoch_train_losses)
-            #print("epoch_train_correct: ", epoch_train_correct)
-            #print("epoch_train_total: ", epoch_train_total)
-            epoch_train_accuracy = epoch_train_correct / epoch_train_total
-            #print("epoch_train_accuracy: ", epoch_train_accuracy)
+            print(f"[DEBUG] Total labels processed: {epoch_train_total}")
+            print(f"[DEBUG] Correct predictions: {epoch_train_correct}")
+            epoch_train_accuracy = epoch_train_correct / epoch_train_total if epoch_train_total > 0 else 0.0
+            print("epoch_train_accuracy: ", epoch_train_accuracy)
 
             self.train_losses.append(epoch_train_loss)
             self.train_accuracies.append(epoch_train_accuracy)
 
-            # Evaluate at the end of the epoch
             if evaluator is not None:
+                model.eval()  # ✅ Ensure eval mode
                 eval_scores = evaluator.evaluate()
                 self.val_losses.append(eval_scores['val_loss'])
                 self.val_accuracies.append(eval_scores['accuracy'])
+                model.train()  # ✅ Return to train mode
 
-            #print(f"Epoch {epoch + 1} - Training Loss: {epoch_train_loss:.4f}, Accuracy: {epoch_train_accuracy:.4f}")
-            #if evaluator:
-            #    print(f"Validation Loss: {eval_scores['val_loss']:.4f}, Accuracy: {eval_scores['accuracy']:.4f}")
-
-            # Save checkpoint after each epoch
             epoch_save_dir = os.path.join(output_path, f'epoch_{epoch + 1}')
             os.makedirs(epoch_save_dir, exist_ok=True)
             torch.save(model.state_dict(), os.path.join(epoch_save_dir, 'pytorch_model.bin'))
             print(f"Epoch {epoch + 1} checkpoint saved to {epoch_save_dir}\n")
 
-        # Save the final model
         if output_path is not None:
             final_model_path = os.path.join(output_path, 'final_model.bin')
             torch.save(model.state_dict(), final_model_path)
             print(f"\nFinal model saved to {final_model_path}")
 
-        # Save training and validation plots
         self.save_plots(output_path)
 
     def save_plots(self, output_path):
