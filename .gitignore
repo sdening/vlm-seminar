@@ -12,6 +12,9 @@ pretrained/medclip-vit/*
 pretrained/medclip/*
 
 
+datasets/
+
+
 *.pdf
 *.pkl
 *.json
