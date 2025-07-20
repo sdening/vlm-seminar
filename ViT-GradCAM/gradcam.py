@@ -29,9 +29,14 @@ class GradCam:
         self.target.register_forward_hook(self._get_grads_hook)
 
     # Function to reshape the tensor for visualization
-    def reshape_transform(self, tensor, height=14, width=14):
-        result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
-        result = result.transpose(2, 3).transpose(1, 2)  # Rearrange dimensions to (C, H, W)
+    #def reshape_transform(self, tensor, height=14, width=14):
+    #    result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
+    #    result = result.transpose(2, 3).transpose(1, 2)  # Rearrange dimensions to (C, H, W)
+    #    return result
+    def reshape_transform(self, tensor, height=7, width=7):
+        #print("NEW RESHAPE")
+        result = tensor.reshape(tensor.size(0), height, width, tensor.size(2))
+        result = result.transpose(1, 2).transpose(1, 3)  # (B, C, H, W)
         return result
 
     # Function to compute the Grad-CAM heatmap

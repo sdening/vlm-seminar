@@ -29,7 +29,7 @@ from medclip.losses import ImageTextContrastiveLoss
 
 from medclip.losses import ImageSuperviseLoss
 
-from medclip.trainer import Trainer
+from trainer import Trainer #different trainer file
 from medclip.evaluator import Evaluator
 from medclip import constants
 from medclip.prompts import generate_class_prompts, generate_chexpert_class_prompts, generate_covid_class_prompts
@@ -83,22 +83,29 @@ class RSNASuperviseImageDataset:
         self.transform = imgtransform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485], std=[0.229]),
+            transforms.Normalize(mean=[0.5862785803043838], std=[0.27950088968644304]), 
         ])
         self.class_names = class_names
 
         df_list = []
         for data in datalist:
-            filename = f'./local_data/{data}-meta.csv'
+            filename = f'./local_data/{data}.csv'
             print('Loading data from:', filename)
             df = pd.read_csv(filename)
             # Map column names from our csv to match MedCLIP's expectations
             df = df.rename(columns={'path': 'imgpath', 'label': class_names[0]})
             df_list.append(df)
 
-        self.df = pd.concat(df_list, axis=0).reset_index(drop=True)
+        df = pd.concat(df_list, axis=0).reset_index(drop=True)
         #self.df = shuffle(self.df).reset_index(drop=True) #shuffle before sampling a subset for the smaller dataset in the next line
         #self.df = self.df[:800] #smaller set for easier debugging -> ~10%
+                # 💡 Subsample with fixed seed
+        np.random.seed(43)
+        sample_size = int(len(df) * 0.1)
+        sampled_indices = np.random.choice(len(df), size=sample_size, replace=False)
+        self.df = df.iloc[sampled_indices].reset_index(drop=True)
+        print("Using a fixed 10% subset of the data.")
+
         print("Label distribution:")
         print(self.df['label'].value_counts())
 
@@ -120,18 +127,20 @@ class RSNASuperviseImageDataset:
         img = Image.fromarray(img).convert("L")  # Convert to PIL Image (grayscale)
         img = self.transform(img)  # Apply transformations
         #print(f"Image shape after transformation: {img.shape}")
-        img = img.unsqueeze(0) # Add channel dimension to make it [1, height, width]
+        #img = img.unsqueeze(0) # Add channel dimension to make it [1, height, width] #sandra removed
     
-        label = torch.tensor(row[self.class_names[0]], dtype=torch.float32)  # Use scalar label
+        #label = torch.tensor(row[self.class_names[0]], dtype=torch.float32)  # Use scalar label
+        label = torch.tensor([row[self.class_names[0]]], dtype=torch.float32) #sandra adapt
     
         #label = pd.DataFrame([[row[col] for col in self.class_names]], columns=self.class_names)
         #label = torch.tensor([row[self.class_names[0]]], dtype=torch.float32)
+        #print(label.shape) #sandra
         return img, label
 
 
 # Initialize datasets and dataloaders
-train_dataset = RSNASuperviseImageDataset(['rsna-balanced-train'], class_names=class_names, imgtransform=transform)
-val_dataset = RSNASuperviseImageDataset(['rsna-balanced-val'], class_names=class_names, imgtransform=transform)
+train_dataset = RSNASuperviseImageDataset(['train_balanced'], class_names=class_names, imgtransform=transform)
+val_dataset = RSNASuperviseImageDataset(['val_balanced'], class_names=class_names, imgtransform=transform)
 
 trainloader = DataLoader(
     train_dataset,
@@ -182,7 +191,7 @@ train_objectives = [
 ]
 
 # Define save path for the model
-model_save_path = './checkpoints/rsna_binary_classification'
+model_save_path = './checkpoints/rsna_binary_classification_SU'
 
 
 if __name__ == "__main__":
@@ -207,7 +216,7 @@ print('Training complete.')
 
 
 #########-----------------TESTING-----------------#########
-test_dataset = RSNASuperviseImageDataset(['rsna-balanced-test'], class_names=class_names, imgtransform=transform)
+test_dataset = RSNASuperviseImageDataset(['test_balanced'], class_names=class_names, imgtransform=transform)
 
 test_dataloader = DataLoader(
     test_dataset,

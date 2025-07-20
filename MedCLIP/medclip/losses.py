@@ -127,3 +127,41 @@ class ImageSuperviseLoss(nn.Module):
 
     def mixup_criterion(self, criterion, pred, y_a, y_b, lamb):
         return lamb * criterion(pred, y_a) + (1- lamb) * criterion(pred, y_b)
+    
+
+class ImageSuperviseLoss_weighted(nn.Module):
+    def __init__(self, model, pos_weight=None, loss_fn=None):
+        super().__init__()
+        self.model = model
+        self.mode = model.mode
+
+        if loss_fn is not None:
+            self.loss_fn = loss_fn
+        else:
+            if self.mode in ['multilabel', 'binary']:
+                if pos_weight is not None:
+                    print(f"[INFO] Using BCEWithLogitsLoss with pos_weight={pos_weight.item():.4f}")
+                    self.loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+                else:
+                    self.loss_fn = nn.BCEWithLogitsLoss()
+            else:
+                self.loss_fn = nn.CrossEntropyLoss()
+
+    def forward(self, pixel_values, labels=None, **kwargs):
+        outputs = self.model(pixel_values=pixel_values, labels=labels, return_loss=True)
+        return outputs
+
+    def mixup_data(self, x, y, alpha=0.3):
+        if alpha > 0:
+            lamb = np.random.beta(alpha, alpha)
+        else:
+            lamb = 1
+        batch_size = x.shape[0]
+        index = torch.randperm(batch_size).to(x.device)
+        mixed_x = lamb * x + (1 - lamb) * x[index, :]
+        y_a, y_b = y, y[index]
+        return mixed_x, y_a, y_b, lamb
+
+    def mixup_criterion(self, criterion, pred, y_a, y_b, lamb):
+        return lamb * criterion(pred, y_a) + (1 - lamb) * criterion(pred, y_b)
+     

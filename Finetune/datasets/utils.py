@@ -6,7 +6,7 @@ from PIL import Image
 
 
 def read_from_dicom(img_path, imsize=None, transform=None):
-    dcm = pydicom.read_file(img_path)
+    dcm = pydicom.read_file(img_path, force=True)
     x = dcm.pixel_array
 
     x = cv2.convertScaleAbs(x, alpha=(255.0 / x.max()))
