@@ -21,3 +21,4 @@ pretrained/
 *.pdf
 *.pkl
 *.json
+*.dcm
