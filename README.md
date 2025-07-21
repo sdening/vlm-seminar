@@ -1,65 +1,45 @@
-# 🚀 VLP finetune code for AI for Vision-Language Models in Medical Imaging (IN2107)
+# MedCLIP RSNA Binary Classification
 
-**This repository contains finetune code for the seminar "AI for Vision-Language Models in Medical Imaging (IN2107)." For more information, visit the [VLP Seminar page](https://compai-lab.github.io/teaching/vlm_seminar/).**
+This repository contains code and scripts for training and evaluating a MedCLIP-based model on the RSNA dataset for binary classification of medical images (e.g., detecting presence/absence of a condition in chest X-rays).
 
-NOTE: This repository was modified to use both [MedCLIP](https://arxiv.org/pdf/2210.10163) and [ConVIRT](https://arxiv.org/pdf/2010.00747) method and finetune on RSNA and CheXpert5x200 classification task. 
+NOTE: This repository was modified to use both [MedCLIP](https://arxiv.org/pdf/2210.10163) method and finetune on RSNA classification task. 
 
-The main code is designed to fine-tune Vision-Language Pre-trained models for downstream tasks, including classification, segmentation, and detection.
+---
 
-This project is built upon the code from [MGCA](https://github.com/HKU-MedAI/MGCA). A special thanks to their repository.
+## Repository Structure
 
-# 🗂️ Structure of the Repository
-Here are the base structures of our repository (including the modifications for MedCLIP and ConVIRT): 
 ```
-.
-├── annotations # Stores the outputs of the preprocessing and annotations for each dataset (including the balanced RSNA dataset).
-├── configs # Configuration files for each dataset (e.g., chexpert.yaml, rsna.yaml).
-├── data # Outputs for the model (checkpoints, log outputs).
-├── Finetune # Main code for fine-tuning the models and post-processing of results.
-├── MedCLIP # GitHub Reposity of MedCLIP modified to use ViT backbone on classification finetune task.
-├── poster # Final seminar poster with results.
-├── preprocess_datasets # Code to preprocess the downstream datasets.
-├── ViT-GradCAM # Code to plot saliency maps.
+vlm-seminar/
+│
+├── MedCLIP/
+│   ├── examples/
+│   │   └── run_medclip_pretrain.py      # Main training & evaluation script
+│   ├── dataset/
+│   │   └── ...                          # Custom dataset classes
+│   ├── modeling_medclip.py              # MedCLIP model definitions
+│   ├── losses.py                        # Loss functions
+│   ├── evaluator.py                     # Evaluation utilities
+│   ├── prompts.py                       # Prompt generation
+│   └── constants.py                     # Constants and mappings
+│
+├── trainer.py                           # Training loop logic
+│
+├── local_data/
+│   ├── train_balanced.csv               # Training data CSV
+│   ├── val_balanced.csv                 # Validation data CSV
+│   ├── test_balanced.csv                # Test data CSV
+│   └── ...                              # (CSV: columns = path, label)
+│
+├── checkpoints/
+│   └── rsna_binary_classification_SU/
+│       └── final_model.bin              # Saved model weights
+│
 └── README.md
 ```
-You can find the final seminar poster with our results in the [`poster`](poster) folder.
 
-In [`postprocess.ipynb`](Finetune/postprocess/postprocess.ipynb) you can find our code to compute the confusion matrix of the test results on the RSNA dataset and to plot image embeddings for the CheXpert and RSNA datasets using t-SNE.
+---
 
-Both MedCLIP with ResNet50 and ConVIRT with the base Vision Transformer (ViT) can be run from the classification finetuning script [`train_cls.py`](Finetune/train_cls.py). Switching between the balanced and imbalanced versions of the RSNA dataset is also possible. Both RSNA balanced and imbalanced preprocessed datasets can be found in `annotations/rsna`. Details about the dataset balancing process can be found in the data preprocessing script [`rsna.ipynb`](preprocess_datasets/rsna.ipynb). 
-
-We downloaded the pretrained checkpoints for MedCLIP directly from the official [`MedCLIP repository`](https://github.com/RyanWangZf/MedCLIP/tree/main/medclip). Our implementation for finetuning MedCLIP on RSNA to perform classification can be found in the [`MedCLIP`](MedCLIP) directory. 
-
-For the ConVIRT ViT pretrained checkpoints please contact me directly.
-
-# 🛠️ Preprocess Datasets
-Here we provide examples for two datasets: RSNA and Chexpert.
-
-## RSNA Dataset
-The RSNA dataset includes:
-- **Annotations**: Image, bounding box, and label.
-- **Use Cases**: Suitable for tasks such as classification, detection, and segmentation (using bounding boxes as masks).
-
-### Download the RSNA Dataset
-To download the dataset, follow the MGCA setup, download via link [RSNA Pneumonia Detection Challenge](https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge/data):
-
-```bash
-mkdir ~/datasets/rsna
-cd ~/datasets/rsna
-kaggle competitions download -c rsna-pneumonia-detection-challenge
-unzip rsna-pneumonia-detection-challenge.zip -d ./
-```
-
-### Preprocess the Dataset Format
-Details can be found in [`rsna.ipynb`](preprocess_datasets/rsna.ipynb) under the `preprocess_datasets` folder. The outputs will be saved in `annotations/rsna/`:
-- `train.csv`
-- `val.csv`
-- `test.csv`
-
-## Chexpert Dataset
-The Chexpert dataset includes:
-- **Annotations**: Covers 14 diseases, with labels of 0, 1, and -1 (where 0 indicates absence, 1 indicates presence, and -1 indicates uncertainty).
-- **Use Cases**: Primarily for classification tasks.
+## Data Preparation
 
 ### Download the Chexpert Dataset
 You can download the dataset from Kaggle using the following link: [Chexpert Dataset](https://www.kaggle.com/datasets/ashery/chexpert). Alternatively, you can download it directly via command line:
@@ -70,146 +50,128 @@ cd ~/datasets/chexpert
 kaggle datasets download ashery/chexpert
 unzip chexpert-v10-small.zip -d ./
 ```
+Preprocess using the `rsna.ipynb` notebook in "preprocessing" folder. 
 
-# 🔧 Finetune
-Note: The training part of the code is based on [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/starter/introduction.html).
+- Place your CSV files (`train_balanced.csv`, `val_balanced.csv`, `test_balanced.csv`) in the `local_data/` directory.
+- Each CSV should have at least two columns: `path` (path to DICOM image) and `label` (0 or 1).
 
-## Code Structure for Finetune
-The code structure for fine-tuning is divided into two main parts:
-- **datasets**: Main part for loading different datasets.
-- **methods**: Main part for different methods.
-```
-.Finetune
-├── datasets # Main part for loading different datasets.
-│   ├── cls_dataset.py
-│   ├── data_module.py
-│   ├── det_dataset.py
-│   ├── __init__.py
-│   ├── seg_dataset.py
-│   ├── transforms.py
-│   └── utils.py
-|....
-```
-```
-.Finetune
-├── methods # Main parts for different methods.
-│   ├── backbones # Contains the backbones needed for methods.
-│   │   ├── cnn_backbones.py
-│   │   ├── detector_backbone.py
-│   │   ├── encoder.py
-│   │   ├── __init__.py
-│   │   ├── med.py
-│   │   ├── transformer_seg.py
-│   │   └── vits.py
-│   ├── cls_model.py  # Model for classification.
-│   ├── det_model.py # Model for detection.
-│   ├── __init__.py
-│   ├── seg_model.py # Model for segmentation.
-│   └── utils # Some losses and utilities.
-│       ├── box_ops.py
-│       ├── detection_utils.py
-│       ├── __init__.py
-│       ├── segmentation_loss.py
-│       └── yolo_loss.py
-|....
-```
+---
 
-## Example for Fine-tuning
-Here we provide an example based on the RSNA dataset. You just need to modify the [rsna.yaml](configs/rsna.yaml) file for different tasks.
+## Training & Evaluation
 
-The `rsna.yaml` file contains four parts:
-- **dataset**: Base information for the dataset.
-- **cls**: Configuration for classification.
-- **det**: Configuration for detection.
-- **seg**: Configuration for segmentation.
-```
-dataset: # Base information for setting the dataset.
-    img_size: 224 # The input size will be 224.
-    dataset_dir: /u/home/lj0/datasets/RSNA_Pneumonia # Dataset base directory.
-    train_csv: /u/home/lj0/Code/VLP-Seminars/annotations/rsna/train.csv # Annotations path for train, test, val.
-    valid_csv: /u/home/lj0/Code/VLP-Seminars/annotations/rsna/val.csv
-    test_csv: /u/home/lj0/Code/VLP-Seminars/annotations/rsna/test.csv
-    
-cls:
-    img_size: 224
-    backbone: resnet_50 # ResNet and ViT are supported (backbone you want to test).
-    multilabel: False # Whether the classification task is a multilabel task.
-    embed_dim: 128 
-    in_features: 2048 
-    num_classes: 2 # Number of classification classes.
-    pretrained: True # Whether to utilize a pre-trained model to initialize.
-    freeze: True # Whether to freeze the entire backbone.
-    checkpoint: /home/june/Code/MGCA-main/data/ckpts/resnet_50.ckpt # Initialization checkpoint path.
-    lr: 5.0e-4 # Learning rate for classification.
-    dropout: 0.0 # Dropout rate.
-    weight_decay: 1.0e-6 # Weight decay.
+The main script is an adapted version of  [`MedCLIP/examples/run_medclip_pretrain.py`](MedCLIP/examples/run_medclip_pretrain.py).
 
-det:
-    img_size: 224
-    backbone: resnet_50 # Only ResNet-50 is supported.
-    lr: 5.0e-4
-    weight_decay: 1.0e-6
-    conf_thres: 0.5 # Confidence threshold.
-    iou_thres: [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75] # IoU thresholds for YOLO.
-    nms_thres: 0.5
-    pretrained: True
-    freeze: True
-    max_objects:
-    backbone: resnet_50 #only resnet_50 is supported
-    lr: 5.0e-4
-    weight_decay: 1.0e-6
-    conf_thres: 0.5 # confidence thereshold 0.5
-    iou_thres: [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75] # iou thres for yolo vit_base # ViT-Base and ResNet-50.
-    lr: 2e-4
-    weight_decay: 0.05
-    pretrained: True
-    freeze: True
-    embed_dim: 128  
-    checkpoint: /home/june/Code/MGCA
-seg:
-    img_size: 224 #224 for vit
-    backbone: vit_base #vit_base and resnet_50
-    lr: 2e-4
-    weight_decay: 0.05
-    pretrained: True
-    freeze: True
-    embed_dim: 128  
-    checkpoint: /home/june/Code/MGCA-main/data/ckpts/vit_base.ckpt
+The pretrained checkpoints for MedCLIP were downloaded directly from the official [`MedCLIP repository`](https://github.com/RyanWangZf/MedCLIP/tree/main/medclip)
 
-```
+### **How it works:**
 
-### 1) Classification (Finetune)
-You can directly observe the performance of classification using Weights & Biases (WandB).
+1. **Data Loading:**  
+   Loads and preprocesses DICOM images using a custom dataset class. Only 10% of the data is used for faster debugging (can be adjusted).
+
+2. **Model Setup:**  
+   Initializes a MedCLIP model with a Vision Transformer (ViT) backbone and a binary classifier.
+
+3. **Training:**  
+   Trains the model on the training set, evaluates on the validation set, and saves checkpoints.
+
+4. **Testing:**  
+   After training, loads the best model and evaluates on the test set. Prints confusion matrix, accuracy, recall, and test loss.
+
+### **To run:**
+
 ```bash
-python train_cls.py --batch_size 46 --num_workers 16 --max_epochs 50 --config ../configs/chexpert.yaml --gpus 1 --dataset chexpert --data_pct 1 --ckpt_dir ../data/ckpts --log_dir ../data/log_output
-```
-Alternatively, you can directly run:
-```bash
-python train_cls.py
+cd MedCLIP/examples
+python run_medclip_pretrain.py
 ```
 
-These experiments were run with MedCLIP using Resnet 50 backbone and ConVIRT using ViT backbone. 
-With these experiments we tried to reveal the role of balancing datasets and of using different backbone architectures.
+- The script is set to run on **CPU** by default.  
+- Model checkpoints are saved in `checkpoints/rsna_binary_classification_SU/`.
+
+---
+
+## Key Files
+
+- **MedCLIP/examples/run_medclip_pretrain.py**  
+  Main script for training and evaluating the MedCLIP model.
+
+- **MedCLIP/modeling_medclip.py**  
+  Model architectures for MedCLIP and classifier.
+
+- **MedCLIP/dataset/**  
+  Custom dataset classes for loading and preprocessing data.
+
+- **trainer.py**  
+  Training loop and checkpointing logic.
+
+- **MedCLIP/evaluator.py**  
+  Evaluation metrics and utilities.
+
+---
+
+## Results
+
+After running the script, you will see output like:
+
+```
+######### Final Test Results #########
+Confusion Matrix:
+TP: ..., TN: ..., FP: ..., FN: ...
+Accuracy: 0.xxxx
+Recall: 0.xxxx
+Test Loss: 0.xxxx
+```
+
+---
+
+## Customization
+
+- **Data Subsampling:**  
+  By default, only 10% of the data is used for quick debugging. Adjust in `RSNASuperviseImageDataset` if needed.
+
+- **Device:**  
+  The script uses CPU. To use GPU, change `device = torch.device("cpu")` to `torch.device("cuda")` and adjust environment variables.
+
+- **Batch Size, Epochs, etc.:**  
+  Modify the `train_config` dictionary in the script.
+
+---
+
+## Requirements
+
+- Python 3.7+
+- PyTorch
+- torchvision
+- pandas, numpy, scikit-learn
+- pydicom, Pillow
+
+Install dependencies with:
+
+```bash
+pip install torch torchvision pandas numpy scikit-learn pydicom Pillow
+```
+
+---
+
+## Citation
+
+If you use this code, please cite the original MedCLIP paper and this repository.
+
+---
+
+## License
+
+This project is for research and educational purposes.
+
+---
+
+**Contact:**  
+For questions, please open an issue or contact the repository maintainer.
 
 
-### 2) Detection (Finetune)
-You can directly observe the performance of classification using Weights & Biases (WandB).
-```bash
-python train_det.py --batch_size 32 --num_workers 16 --max_epochs 50 --config ../configs/rsna.yaml --gpus 1 --dataset rsna --data_pct 1 --ckpt_dir ../data/ckpts --log_dir ../data/log_output
-```
-Alternatively, you can directly run:
-```bash
-python train_det.py
-```
 
-### 3) Segmentation (Finetune)
-You can directly observe the performance of classification using Weights & Biases (WandB).
-```bash
-python train_seg.py --batch_size 48 --num_workers 4 --max_epochs 50 --config ../configs/rsna.yaml --gpus 1 --dataset rsna --data_pct 1 --ckpt_dir ../data/ckpts --log_dir ../data/log_output
-```
-Alternatively, you can directly run:
-```bash
-python train_seg.py
-```
 
 # 🎉 End & Enjoy
+
+
+
+
