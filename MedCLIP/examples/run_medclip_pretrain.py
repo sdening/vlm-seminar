@@ -68,7 +68,7 @@ transform = transforms.Compose([
     transforms.Resize((224, 224)),  # Resize to 224x224
     transforms.ToTensor(),
     transforms.Lambda(lambda x: x.repeat(3, 1, 1)), 
-    transforms.Normalize(mean=[0.485, 0.485, 0.485], std=[0.229, 0.229, 0.229])  
+    transforms.Normalize(mean=[0.5863, 0.5863, 0.5863], std=[0.2795, 0.2795, 0.2795])  
 ])
 
 # Custom dataset class for RSNA dataset they provided us
