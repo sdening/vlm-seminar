@@ -70,7 +70,6 @@ def parse_args():
 
 def SuperviseImageCollator(mode="binary"):
     def collate_fn(batch):
-        # Entferne Nones (z. B. bei fehlerhaften DICOMs)
         batch = [b for b in batch if b is not None]
         images, labels, paths = zip(*batch)
 
@@ -79,7 +78,7 @@ def SuperviseImageCollator(mode="binary"):
         return {
             "pixel_values": torch.stack(images),
             "labels": torch.stack(labels),
-            "paths": paths  # optional: bleibt eine Liste von Strings
+            "paths": paths 
         }
     return collate_fn
 
@@ -138,9 +137,6 @@ if __name__ == '__main__':
     else:
         model = FinetuneClassifier(config)
 
-
-    #jetzt neuer Vorschlag
-
     # get current time
     now = datetime.datetime.now(tz.tzlocal())
     extension = now.strftime("%Y_%m_%d_%H_%M_%S")
@@ -151,32 +147,27 @@ if __name__ == '__main__':
     print('ckpt_dir: ', ckpt_dir)
     print('logger_dir:', logger_dir)
 
-    # === Vorbereiten des Datasets ===
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
 
-    # === Loss- und Evaluationskomponenten ===
-    # Beispiel: Du nutzt ein Kontrastives Loss-Modul, wenn MedCLIP
     loss_model = torch.nn.BCEWithLogitsLoss()
     loss_model.to(device)
     evaluator = Evaluator(medclip_clf=model, eval_dataloader=val_loader)
 
-    # === Trainingsziel definieren ===
     train_objectives = [(train_loader, loss_model, 1.0)]
 
-    # === Eigenen Trainer importieren und benutzen ===
     from medclip.trainer import Trainer  
 
     train_config = {
-    'batch_size': 1,
-    'num_epochs': 1,
-    'warmup': 0.1, # the first 10% of training steps are used for warm-up
-    'lr': 2e-5,
-    'weight_decay': 0.01,
-    'eval_batch_size': 1,
-    'eval_steps': 500,
-    'save_steps': 1000,
-}
+        'batch_size': 1,
+        'num_epochs': 1,
+        'warmup': 0.1, # the first 10% of training steps are used for warm-up
+        'lr': 2e-5,
+        'weight_decay': 0.01,
+        'eval_batch_size': 1,
+        'eval_steps': 500,
+        'save_steps': 1000,
+    }
 
     model_save_path = f'./checkpoints/vision_text_pretrain_medclip_SS'
     trainer = Trainer()

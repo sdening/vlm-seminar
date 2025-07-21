@@ -99,7 +99,8 @@ class RSNASuperviseImageDataset:
         df = pd.concat(df_list, axis=0).reset_index(drop=True)
         #self.df = shuffle(self.df).reset_index(drop=True) #shuffle before sampling a subset for the smaller dataset in the next line
         #self.df = self.df[:800] #smaller set for easier debugging -> ~10%
-                # 💡 Subsample with fixed seed
+        
+        #Subsample with fixed seed
         np.random.seed(43)
         sample_size = int(len(df) * 0.1)
         sampled_indices = np.random.choice(len(df), size=sample_size, replace=False)
@@ -147,7 +148,7 @@ trainloader = DataLoader(
     batch_size=train_config['batch_size'],
     collate_fn=SuperviseImageCollator(mode="binary"),
     shuffle=True,
-    num_workers=0,  # Adjust system's CPU capabilities #or more!! 
+    num_workers=0,  # Adjust system's CPU capabilities 
 )
 
 eval_dataloader = DataLoader(
@@ -155,7 +156,7 @@ eval_dataloader = DataLoader(
     batch_size=train_config['eval_batch_size'],
     collate_fn=SuperviseImageCollator(mode="binary"),
     shuffle=False,
-    num_workers=0, #or more!! 
+    num_workers=0, 
 )
 
 # Build MedCLIP model and classifier
@@ -209,7 +210,7 @@ if __name__ == "__main__":
         save_steps=train_config['save_steps'],
         evaluator=evaluator,
         eval_dataloader=eval_dataloader,
-        use_amp=False,  # Disable AMP because I use CPU -> for GPU you can enable
+        use_amp=False,  # Disable AMP because I use CPU -
     )
 
 print('Training complete.')
@@ -231,14 +232,12 @@ final_model_path = os.path.join(model_save_path, 'final_model.bin')
 print(f"Loading the final model from {final_model_path}")
 model.load_state_dict(torch.load(final_model_path, map_location=torch.device("cpu")))
 
-# Set the model to evaluation mode
 model.eval()
 
-# Initialize evaluator for the test set
 test_evaluator = Evaluator(
     medclip_clf=medclip_clf,
     eval_dataloader=test_dataloader,
-    mode='binary'  # Ensure mode matches your task
+    mode='binary'  
 )
 
 # Evaluate on the test set

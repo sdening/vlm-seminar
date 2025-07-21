@@ -48,29 +48,6 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = "cpu"
 
-# Training configurations
-train_config = {
-    'batch_size': 64, #64
-    'num_epochs': 15,
-    'warmup': 0.1,
-    'lr': 1.0e-4, #2e-5,
-    'weight_decay': 1e-6,
-    'eval_batch_size': 64,
-    'eval_steps': 500, #500 
-    'save_steps': 500,
-}
-
-# Define class names for RSNA
-class_names = ['label'] #0 and 1
-
-# Define transformations for image preprocessing
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),  # Resize to 224x224
-    transforms.ToTensor(),
-    transforms.Lambda(lambda x: x.repeat(3, 1, 1)), 
-    transforms.Normalize(mean=[0.5863, 0.5863, 0.5863], std=[0.2795, 0.2795, 0.2795])  
-])
-
 # Custom dataset class for RSNA dataset they provided us
 class RSNASuperviseImageDataset:
     def __init__(self, datalist, class_names, imgtransform=None):
@@ -99,7 +76,8 @@ class RSNASuperviseImageDataset:
         df = pd.concat(df_list, axis=0).reset_index(drop=True)
         #self.df = shuffle(self.df).reset_index(drop=True) #shuffle before sampling a subset for the smaller dataset in the next line
         #self.df = self.df[:800] #smaller set for easier debugging -> ~10%
-                # 💡 Subsample with fixed seed
+
+        # Subsample with fixed seed
         np.random.seed(43)
         balanced_fraction = 2667 / 12024 
         sample_size = int(len(df) * balanced_fraction)
@@ -128,16 +106,37 @@ class RSNASuperviseImageDataset:
         img = Image.fromarray(img).convert("L")  # Convert to PIL Image (grayscale)
         img = self.transform(img)  # Apply transformations
         #print(f"Image shape after transformation: {img.shape}")
-        #img = img.unsqueeze(0) # Add channel dimension to make it [1, height, width] #sandra removed
+        #img = img.unsqueeze(0) # Add channel dimension to make it [1, height, width] #removed
     
         #label = torch.tensor(row[self.class_names[0]], dtype=torch.float32)  # Use scalar label
-        label = torch.tensor([row[self.class_names[0]]], dtype=torch.float32) #sandra adapt
+        label = torch.tensor([row[self.class_names[0]]], dtype=torch.float32) #adapted
     
         #label = pd.DataFrame([[row[col] for col in self.class_names]], columns=self.class_names)
         #label = torch.tensor([row[self.class_names[0]]], dtype=torch.float32)
-        #print(label.shape) #sandra
         return img, label
 
+# Training configurations
+train_config = {
+    'batch_size': 64, #64
+    'num_epochs': 15,
+    'warmup': 0.1,
+    'lr': 1.0e-4, #2e-5,
+    'weight_decay': 1e-6,
+    'eval_batch_size': 64,
+    'eval_steps': 500, #500 
+    'save_steps': 500,
+}
+
+# Define class names for RSNA
+class_names = ['label'] #0 and 1
+
+# Define transformations for image preprocessing
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),  # Resize to 224x224
+    transforms.ToTensor(),
+    transforms.Lambda(lambda x: x.repeat(3, 1, 1)), 
+    transforms.Normalize(mean=[0.5863, 0.5863, 0.5863], std=[0.2795, 0.2795, 0.2795])  
+])
 
 # Initialize datasets and dataloaders
 train_dataset = RSNASuperviseImageDataset(['train_balanced'], class_names=class_names, imgtransform=transform)
@@ -148,7 +147,7 @@ trainloader = DataLoader(
     batch_size=train_config['batch_size'],
     collate_fn=SuperviseImageCollator(mode="binary"),
     shuffle=True,
-    num_workers=0,  # Adjust system's CPU capabilities #or more!! 
+    num_workers=0,  # Adjust to CPU
 )
 
 eval_dataloader = DataLoader(
@@ -156,7 +155,7 @@ eval_dataloader = DataLoader(
     batch_size=train_config['eval_batch_size'],
     collate_fn=SuperviseImageCollator(mode="binary"),
     shuffle=False,
-    num_workers=0, #or more!! 
+    num_workers=0,  
 )
 
 # Build MedCLIP model and classifier
@@ -173,8 +172,6 @@ medclip_clf = SuperviseClassifier(
     device=torch.device("cpu"), # CPU
 )
 
-#print("Initial classifier bias:", medclip_clf.fc.bias)
-
 medclip_clf.to(device)
 
 # Build evaluator
@@ -186,7 +183,6 @@ evaluator = Evaluator(
 
 image_supervise_loss = ImageSuperviseLoss(model=medclip_clf)
 
-
 train_objectives = [
     (trainloader, image_supervise_loss, 1),
 ]
@@ -196,7 +192,7 @@ model_save_path = './checkpoints/rsna_binary_classification_SU_balanced'
 
 
 if __name__ == "__main__":
-    # Train the model
+    # Train  model
     trainer = Trainer()
     trainer.train(
         model,
@@ -210,7 +206,7 @@ if __name__ == "__main__":
         save_steps=train_config['save_steps'],
         evaluator=evaluator,
         eval_dataloader=eval_dataloader,
-        use_amp=False,  # Disable AMP because I use CPU -> for GPU you can enable
+        use_amp=False,  # Disable AMP because I use CPU 
     )
 
 print('Training complete.')
@@ -221,10 +217,10 @@ test_dataset = RSNASuperviseImageDataset(['test_balanced'], class_names=class_na
 
 test_dataloader = DataLoader(
     test_dataset,
-    batch_size=train_config['eval_batch_size'],  # Use evaluation batch size
+    batch_size=train_config['eval_batch_size'],  
     collate_fn=SuperviseImageCollator(mode="binary"),
     shuffle=False,
-    num_workers=0,  # Adjust based on system's CPU capabilities
+    num_workers=0,  # CPU
 )
 
 # Load the final trained model
@@ -232,17 +228,15 @@ final_model_path = os.path.join(model_save_path, 'final_model.bin')
 print(f"Loading the final model from {final_model_path}")
 model.load_state_dict(torch.load(final_model_path, map_location=torch.device("cpu")))
 
-# Set the model to evaluation mode
 model.eval()
 
-# Initialize evaluator for the test set
 test_evaluator = Evaluator(
     medclip_clf=medclip_clf,
     eval_dataloader=test_dataloader,
-    mode='binary'  # Ensure mode matches your task
+    mode='binary' 
 )
 
-# Evaluate on the test set
+# Evaluate on  test set
 print("\n######### Testing on Test Set #########")
 test_scores = test_evaluator.evaluate()
 

@@ -18,6 +18,8 @@ from dateutil import tz
 import warnings
 from collections import OrderedDict
 
+from medclip.trainer import Trainer
+
 from medclip.modeling_medclip import MedCLIPVisionModelViT, SuperviseClassifier
 
 from medclip.modeling_medclip import MedCLIPModel, PromptClassifier, MedCLIPVisionModel, MedCLIPVisionModelViT
@@ -170,11 +172,11 @@ if __name__ == '__main__':
         # Check if any parameters are frozen
         frozen_params = [name for name, param in model.named_parameters() if not param.requires_grad]
         if frozen_params:
-            print("🚨 These parameters are frozen (not trainable):")
+            print("parameters are frozen (not trainable):")
             for name in frozen_params:
                 print(name)
         else:
-            print("✅ All model parameters are trainable.")
+            print("All model parameters are trainable")
 
         model_state_dict = model.state_dict()
 
@@ -202,67 +204,29 @@ if __name__ == '__main__':
     print('ckpt_dir: ', ckpt_dir)
     print('logger_dir:', logger_dir)
 
-    # === Vorbereiten des Datasets ===
+
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
 
-    
-    # === Loss- und Evaluationskomponenten ===
-    # Beispiel: Du nutzt ein Kontrastives Loss-Modul, wenn MedCLIP
     loss_model = torch.nn.BCEWithLogitsLoss()
     loss_model.to(device)
 
-
-    # Falls du kein ImageTextContrastiveLoss brauchst, dann eigene Lossklasse nutzen
-    # z.B. für reine Klassifikation:
-    # loss_model = torch.nn.CrossEntropyLoss()
-
-    # Optional: Evaluator vorbereiten
-    #evaluator = Evaluator(model=model, dataloader=val_loader)
     evaluator = Evaluator(medclip_clf=model, eval_dataloader=val_loader)
-
-    # === Trainingsziel definieren ===
     train_objectives = [(train_loader, loss_model, 1.0)]
 
-    # === Eigenen Trainer importieren und benutzen ===
-    from medclip.trainer import Trainer  # dein Trainer
-
-    #trainer = Trainer(args)
-
-    #trainer.train(
-    #    model=model,
-    #    train_objectives=train_objectives,
-    #    eval_dataloader=val_loader,
-    #    evaluator=evaluator,
-    #    epochs=args.max_epochs,
-    #    output_path=ckpt_dir
-    #)
-
     train_config = {
-    'batch_size': 32,
-    'num_epochs': 10,
-    'warmup': 0.0, # the first 10% of training steps are used for warm-up
-    'lr': 1e-4,
-    'weight_decay': 0.01,
-    'eval_batch_size': 32,
-    'eval_steps': 500,
-    'save_steps': 1000
+        'batch_size': 32,
+        'num_epochs': 10,
+        'warmup': 0.0, # the first 10% of training steps are used for warm-up
+        'lr': 1e-4,
+        'weight_decay': 0.01,
+        'eval_batch_size': 32,
+        'eval_steps': 500,
+        'save_steps': 1000
     }
 
     model_save_path = f'./checkpoints/vision_text_pretrain_medclip_SS'
     trainer = Trainer()
-    #trainer.train(
-    #    model,
-    #    train_objectives=train_objectives,
-    #    warmup_ratio=train_config['warmup'],
-    #    epochs=train_config['num_epochs'],
-    #    optimizer_params={'lr':train_config['lr']},
-    #    output_path=model_save_path,
-    #    evaluation_steps=train_config['eval_steps'],
-    #    weight_decay=train_config['weight_decay'],
-    #    save_steps=train_config['save_steps'],
-    #    evaluator=evaluator
-    #    )
 
     trainer.train(
         model,
@@ -277,73 +241,6 @@ if __name__ == '__main__':
         evaluator=evaluator
         )
     print('done')
-
-    """
-    # get current time
-    now = datetime.datetime.now(tz.tzlocal())
-    extension = now.strftime("%Y_%m_%d_%H_%M_%S")
-    ckpt_dir = os.path.join(args.ckpt_dir, f"{'FinetuneCLS'}/{args.dataset}/{extension}")
-    logger_dir = os.path.join(args.logger_dir, f"{'FinetuneCLS'}/{args.dataset}/{extension}")
-    os.makedirs(ckpt_dir, exist_ok=True)
-    os.makedirs(logger_dir, exist_ok=True)
-    print('ckpt_dir: ', ckpt_dir)
-    print('logger_dir:', logger_dir)
-    
-    callbacks = [
-        LearningRateMonitor(logging_interval="step"),
-        ModelCheckpoint(monitor="val_loss", dirpath=ckpt_dir,
-                        save_last=True, mode="min", save_top_k=1),
-        EarlyStopping(monitor="val_loss", min_delta=0.,
-                      patience=10, verbose=False, mode="min")
-    ]
-
-    
-    trainer = Trainer(
-        max_epochs=args.max_epochs,
-        gpus=0,
-        callbacks=callbacks,
-        logger=pl.loggers.WandbLogger( project='FinetuneCLS', name=f"{args.dataset}_{args.data_pct}_{extension}",dir=logger_dir),
-        strategy='ddp', #ddp, ddp_spawn
-        )
-    """
-    
-
-    #model.training_steps = model.num_training_steps(trainer, datamodule)
-
-    
-    # train
-    # import pdb; pdb.set_trace()
-    # trainer.fit(model, datamodule)
-    # test
-    # trainer.test(model, datamodule, ckpt_path="best")
-
-
-
-
-    #trainer.test(model, datamodule, ckpt_path=config['cls']['finetuned_checkpoint']) #sandra
-
-
-
-
-
-
-    # datamodule.prepare_data()
-    # datamodule.setup('fit')
-
-    # train_loader = datamodule.train_dataloader()
-
-    # for batch_idx, (images, labels) in enumerate(train_loader):
-    #     print(f"Batch {batch_idx + 1}:")
-    #     print(f"Images shape: {images.shape}")
-    #     print(f"Labels shape: {labels.shape}")
-    #     print(f"Labels: {labels.squeeze()}")
-    #     if batch_idx == 1:
-    #         break
-
-    # import pdb; pdb.set_trace()
-    # last_batch = list(datamodule.test_dataloader())[-1]
-    # x, y = last_batch
-    # print(f"Last batch: x shape = {x.shape}, y shape = {y.shape}")
 
 
 

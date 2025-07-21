@@ -138,7 +138,6 @@ class MedCLIPVisionModelViT(nn.Module):
                 f"Available keys: {output.keys()}"
             )
 
-        # Optionally project embeddings if required
         if project and hasattr(self, 'projection_head'):
             img_embeds = self.projection_head(img_embeds)
 

@@ -1,5 +1,5 @@
-import cv2  # OpenCV for image processing
-import numpy as np  # NumPy for numerical operations
+import cv2  
+import numpy as np  
 
 class GradCam:
     def __init__(self, model, target):

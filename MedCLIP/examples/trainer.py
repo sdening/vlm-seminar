@@ -150,7 +150,6 @@ class Trainer:
                     epoch_train_correct += (predictions == data['labels']).sum().item()
                     epoch_train_total += data['labels'].numel()
 
-
                     #print(f"Logits: {outputs['logits'][:5]}")
                     #print(f"Predictions: {predictions[:5]}")
                     #print(f"Labels: {data['labels'][:5]}")

@@ -89,32 +89,3 @@ class ChexPertImageClsDataset(Dataset):
         y = torch.tensor(y)
         return x, y
 
-
-# import torch
-# from torch.utils.data import DataLoader
-# from torchvision import transforms
-# import matplotlib.pyplot as plt
-
-# # Assuming you have `RSNAImageDataset` class imported and defined
-
-# # Define some basic transformations (resize, convert to tensor, normalize)
-# transform = transforms.Compose([
-#     transforms.RandomCrop(224),  
-#     transforms.ToTensor(),  
-#     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  
-# ])
-
-# # Instantiate the dataset
-# csv_path = '/u/home/lj0/Code/VLP-Seminars/annotations/train.csv'  # Path to your CSV file
-# dataset = RSNAImageDataset(csv_path=csv_path, transform=transform, data_pct=0.1, imsize=256)  # Using 10% of data
-
-# # Create DataLoader for batching
-# dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
-
-# # Iterate over a batch of data
-# for batch_idx, (images, labels) in enumerate(dataloader):
-#     import pdb; pdb.set_trace()
-#     print(f"Batch {batch_idx + 1}:")
-#     print(f"Images shape: {images.shape}")  # Should be [batch_size, channels, height, width]
-#     print(f"Labels: {labels}")
-#     break  # Remove this if you want to loop through all batches
