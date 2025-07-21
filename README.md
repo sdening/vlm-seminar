@@ -142,7 +142,7 @@ Test Loss: 0.xxxx
 - PyTorch
 - torchvision
 - pandas, numpy, scikit-learn
-- pydicom, Pillow
+- pydicom
 
 Install dependencies with:
 
